@@ -5,20 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Palettenverwaltung PRO + Firebase</title>
 
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="manifest" href="manifest.json">
 
   <style>
     body { padding: 20px; }
+    .table-actions {
+      display: flex;
+      gap: 0.25rem;
+      flex-wrap: wrap;
+    }
   </style>
 </head>
 <body>
   <nav class="navbar navbar-light bg-light mb-4">
     <div class="container-fluid">
       <span class="navbar-brand mb-0 h1">Palettenverwaltung PRO + Firebase</span>
-      <div class="d-flex gap-2">
-        <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#settingsModal">Einstellungen</button>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#settingsModal">
+          Einstellungen
+        </button>
         <button class="btn btn-warning" id="exportCSV">CSV Export</button>
         <button class="btn btn-danger" id="clearBtn">Aktuelle Daten löschen</button>
       </div>
@@ -26,12 +36,17 @@
   </nav>
 
   <div class="container">
-    <div class="alert alert-secondary" id="syncStatus">Synchronisierung wird vorbereitet ...</div>
+    <div class="alert alert-secondary" id="syncStatus">
+      Synchronisierung wird vorbereitet ...
+    </div>
 
     <h3>Aktueller Palettenstand</h3>
     <table class="table table-striped" id="standTable">
       <thead>
-        <tr><th>Spedition</th><th>Stand</th></tr>
+        <tr>
+          <th>Spedition</th>
+          <th>Stand</th>
+        </tr>
       </thead>
       <tbody></tbody>
     </table>
@@ -118,7 +133,10 @@
 
     <table class="table table-bordered" id="timelineTable">
       <thead>
-        <tr><th>Spedition</th><th>Bestand</th></tr>
+        <tr>
+          <th>Spedition</th>
+          <th>Bestand</th>
+        </tr>
       </thead>
       <tbody></tbody>
     </table>
@@ -128,17 +146,24 @@
   </div>
 
   <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Einstellungen</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
+
         <div class="modal-body">
           <h6>Speditionen</h6>
           <form id="speditionForm" class="mb-3">
             <div class="input-group">
-              <input type="text" class="form-control" id="newSpedition" placeholder="Neue Spedition" required>
+              <input
+                type="text"
+                class="form-control"
+                id="newSpedition"
+                placeholder="Neue Spedition"
+                required
+              >
               <button type="submit" class="btn btn-primary">Hinzufügen</button>
             </div>
           </form>
@@ -147,18 +172,51 @@
           <h6>Erfasser</h6>
           <form id="erfasserForm" class="mb-3">
             <div class="input-group">
-              <input type="text" class="form-control" id="newErfasser" placeholder="Neuer Erfasser" required>
+              <input
+                type="text"
+                class="form-control"
+                id="newErfasser"
+                placeholder="Neuer Erfasser"
+                required
+              >
               <button type="submit" class="btn btn-primary">Hinzufügen</button>
             </div>
           </form>
-          <ul class="list-group" id="erfasserList"></ul>
+          <ul class="list-group mb-4" id="erfasserList"></ul>
+
+          <hr>
+          <h6>CSV Import</h6>
+
+          <div class="mb-3">
+            <label class="form-label">Speditionen CSV</label>
+            <input type="file" class="form-control" id="importSpeditionsFile" accept=".csv">
+            <button type="button" class="btn btn-outline-primary mt-2" id="importSpeditionsBtn">
+              Speditionen importieren
+            </button>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Palettenerfassung CSV</label>
+            <input type="file" class="form-control" id="importEntriesFile" accept=".csv">
+            <button type="button" class="btn btn-outline-primary mt-2" id="importEntriesBtn">
+              Palettendaten importieren
+            </button>
+          </div>
+
+          <div class="alert alert-light border" id="importStatus">
+            Noch kein Import ausgeführt.
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+  </script>
+
   <script type="module" src="app.js"></script>
+
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("service-worker.js");

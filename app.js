@@ -25,7 +25,7 @@ let localDb;
 let chart = null;
 let editingId = null;
 
-const dbReq = indexedDB.open("PalettenDB_PRO_FIREBASE", 3);
+const dbReq = indexedDB.open("PalettenDB_PRO_FIREBASE", 4);
 
 dbReq.onupgradeneeded = (e) => {
   localDb = e.target.result;
@@ -59,6 +59,11 @@ dbReq.onerror = () => {
 
 function setSyncStatus(text) {
   const el = document.getElementById("syncStatus");
+  if (el) el.textContent = text;
+}
+
+function setImportStatus(text) {
+  const el = document.getElementById("importStatus");
   if (el) el.textContent = text;
 }
 
@@ -519,9 +524,11 @@ async function loadEntries() {
         <td>${e.erhalten}</td>
         <td>${e.abgegeben}</td>
         <td>${e.erfasser || ""}</td>
-        <td class="d-flex gap-1">
-          <button class="btn btn-sm btn-primary">Bearbeiten</button>
-          <button class="btn btn-sm btn-danger">Löschen</button>
+        <td>
+          <div class="table-actions">
+            <button class="btn btn-sm btn-primary">Bearbeiten</button>
+            <button class="btn btn-sm btn-danger">Löschen</button>
+          </div>
         </td>
       `;
 
@@ -608,6 +615,184 @@ async function updateChart() {
   });
 }
 
+// ---------- CSV Import ----------
+
+function parseCSV(text) {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  if (lines.length < 2) return [];
+
+  const delimiter =
+    lines[0].split(";").length > lines[0].split(",").length ? ";" : ",";
+
+  const headers = lines[0].split(delimiter).map((h) => h.trim());
+
+  return lines.slice(1).map((line) => {
+    const values = line.split(delimiter).map((v) => v.trim());
+    const obj = {};
+    headers.forEach((header, index) => {
+      obj[header] = values[index] ?? "";
+    });
+    return obj;
+  });
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file, "utf-8");
+  });
+}
+
+async function importSpeditionsCSV(file) {
+  const text = await readFileAsText(file);
+  const rows = parseCSV(text);
+
+  const existing = await getAllLocal("speditions");
+  const existingNames = new Set(existing.map((x) => x.name.toLowerCase()));
+
+  let imported = 0;
+
+  for (const row of rows) {
+    const rawName =
+      row.name ||
+      row.Name ||
+      row.spedition ||
+      row.Spedition ||
+      "";
+
+    const name = rawName.trim();
+    if (!name) continue;
+    if (existingNames.has(name.toLowerCase())) continue;
+
+    await addLocal("speditions", {
+      name,
+      createdAt: Date.now()
+    });
+
+    existingNames.add(name.toLowerCase());
+    imported++;
+
+    if (navigator.onLine) {
+      try {
+        await addDoc(cloudSpeditionsRef, {
+          name,
+          createdAt: Date.now()
+        });
+      } catch (err) {
+        console.error("Spedition Cloud-Import fehlgeschlagen:", err);
+      }
+    }
+  }
+
+  await renderMasterData();
+  setImportStatus(`${imported} Spedition(en) importiert.`);
+  setSyncStatus("Speditionen-Import abgeschlossen.");
+}
+
+async function importEntriesCSV(file) {
+  const text = await readFileAsText(file);
+  const rows = parseCSV(text);
+
+  const localSpeditions = await getAllLocal("speditions");
+  const localErfasser = await getAllLocal("erfasser");
+
+  const speditionSet = new Set(localSpeditions.map((x) => x.name.toLowerCase()));
+  const erfasserSet = new Set(localErfasser.map((x) => x.name.toLowerCase()));
+
+  let imported = 0;
+  let skipped = 0;
+
+  for (const row of rows) {
+    const entry = {
+      datum: (row.datum || row.Datum || "").trim(),
+      spedition: (row.spedition || row.Spedition || "").trim(),
+      lieferschein: (
+        row.lieferschein ||
+        row.Lieferschein ||
+        row.lieferscheinnummer ||
+        row.Lieferscheinnummer ||
+        row.lieferscheinnr ||
+        row.Lieferscheinnr ||
+        ""
+      ).trim(),
+      erhalten: parseInt(row.erhalten || row.Erhalten || "0", 10) || 0,
+      abgegeben: parseInt(row.abgegeben || row.Abgegeben || "0", 10) || 0,
+      erfasser: (row.erfasser || row.Erfasser || "").trim(),
+      notizen: (row.notizen || row.Notizen || "").trim(),
+      createdAt: Date.now()
+    };
+
+    if (!entry.datum || !entry.spedition || !entry.lieferschein) {
+      skipped++;
+      continue;
+    }
+
+    if (!speditionSet.has(entry.spedition.toLowerCase())) {
+      await addLocal("speditions", {
+        name: entry.spedition,
+        createdAt: Date.now()
+      });
+      speditionSet.add(entry.spedition.toLowerCase());
+
+      if (navigator.onLine) {
+        try {
+          await addDoc(cloudSpeditionsRef, {
+            name: entry.spedition,
+            createdAt: Date.now()
+          });
+        } catch (err) {
+          console.error("Spedition Auto-Anlage fehlgeschlagen:", err);
+        }
+      }
+    }
+
+    if (entry.erfasser && !erfasserSet.has(entry.erfasser.toLowerCase())) {
+      await addLocal("erfasser", {
+        name: entry.erfasser,
+        createdAt: Date.now()
+      });
+      erfasserSet.add(entry.erfasser.toLowerCase());
+
+      if (navigator.onLine) {
+        try {
+          await addDoc(cloudErfasserRef, {
+            name: entry.erfasser,
+            createdAt: Date.now()
+          });
+        } catch (err) {
+          console.error("Erfasser Auto-Anlage fehlgeschlagen:", err);
+        }
+      }
+    }
+
+    await addLocal("entries", entry);
+
+    if (navigator.onLine) {
+      try {
+        await addDoc(cloudEntriesRef, entry);
+      } catch (err) {
+        console.error("Entry Cloud-Import fehlgeschlagen:", err);
+      }
+    }
+
+    imported++;
+  }
+
+  await renderMasterData();
+  await renderAll();
+
+  setImportStatus(`${imported} Eintrag/Einträge importiert, ${skipped} übersprungen.`);
+  setSyncStatus("Palettendaten-Import abgeschlossen.");
+}
+
+// ---------- Events ----------
+
 document.getElementById("entryForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -683,6 +868,46 @@ document.getElementById("exportCSV").addEventListener("click", async () => {
   a.download = "paletten_export.csv";
   a.click();
   URL.revokeObjectURL(url);
+});
+
+document.getElementById("importSpeditionsBtn").addEventListener("click", async () => {
+  const fileInput = document.getElementById("importSpeditionsFile");
+  const file = fileInput.files[0];
+
+  if (!file) {
+    alert("Bitte eine Speditionen-CSV auswählen.");
+    return;
+  }
+
+  try {
+    setImportStatus("Speditionen-Import läuft ...");
+    await importSpeditionsCSV(file);
+    fileInput.value = "";
+  } catch (err) {
+    console.error(err);
+    setImportStatus("Fehler beim Import der Speditionen.");
+    alert("Fehler beim Import der Speditionen.");
+  }
+});
+
+document.getElementById("importEntriesBtn").addEventListener("click", async () => {
+  const fileInput = document.getElementById("importEntriesFile");
+  const file = fileInput.files[0];
+
+  if (!file) {
+    alert("Bitte eine Palettenerfassung-CSV auswählen.");
+    return;
+  }
+
+  try {
+    setImportStatus("Palettendaten-Import läuft ...");
+    await importEntriesCSV(file);
+    fileInput.value = "";
+  } catch (err) {
+    console.error(err);
+    setImportStatus("Fehler beim Import der Palettendaten.");
+    alert("Fehler beim Import der Palettendaten.");
+  }
 });
 
 window.addEventListener("online", () => {
