@@ -1,0 +1,9 @@
+{
+  "name": "Palettenverwaltung PRO",
+  "short_name": "PalettenPRO",
+  "display": "standalone",
+  "start_url": "./",
+  "background_color": "#ffffff",
+  "theme_color": "#0d6efd",
+  "icons": []
+}
