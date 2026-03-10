@@ -618,24 +618,57 @@ async function updateChart() {
 // ---------- CSV Import ----------
 
 function parseCSV(text) {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  const cleaned = text.replace(/^\uFEFF/, "").trim();
+  if (!cleaned) return [];
 
+  const lines = cleaned.split(/\r?\n/).filter(Boolean);
   if (lines.length < 2) return [];
 
-  const delimiter =
-    lines[0].split(";").length > lines[0].split(",").length ? ";" : ",";
+  const delimiter = lines[0].includes('";"') || lines[0].split(";").length > lines[0].split(",").length
+    ? ";"
+    : ",";
 
-  const headers = lines[0].split(delimiter).map((h) => h.trim());
+  function splitCsvLine(line, delimiterChar) {
+    const result = [];
+    let current = "";
+    let inQuotes = false;
 
-  return lines.slice(1).map((line) => {
-    const values = line.split(delimiter).map((v) => v.trim());
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === delimiterChar && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+
+    result.push(current.trim());
+
+    return result.map(value =>
+      value.replace(/^"(.*)"$/, "$1").trim()
+    );
+  }
+
+  const headers = splitCsvLine(lines[0], delimiter).map(h => h.replace(/^\uFEFF/, "").trim());
+
+  return lines.slice(1).map(line => {
+    const values = splitCsvLine(line, delimiter);
     const obj = {};
+
     headers.forEach((header, index) => {
       obj[header] = values[index] ?? "";
     });
+
     return obj;
   });
 }
@@ -648,15 +681,31 @@ function readFileAsText(file) {
     reader.readAsText(file, "utf-8");
   });
 }
+function normalizeDate(value) {
+  const raw = (value || "").trim();
+  if (!raw) return "";
 
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw;
+  }
+
+  const match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (match) {
+    const [, dd, mm, yyyy] = match;
+    return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+  }
+
+  return raw;
+}
 async function importSpeditionsCSV(file) {
   const text = await readFileAsText(file);
   const rows = parseCSV(text);
 
   const existing = await getAllLocal("speditions");
-  const existingNames = new Set(existing.map((x) => x.name.toLowerCase()));
+  const existingNames = new Set(existing.map(x => (x.name || "").toLowerCase()));
 
   let imported = 0;
+  let skipped = 0;
 
   for (const row of rows) {
     const rawName =
@@ -664,11 +713,21 @@ async function importSpeditionsCSV(file) {
       row.Name ||
       row.spedition ||
       row.Spedition ||
+      row.Speditionen ||
+      row.speditionen ||
       "";
 
     const name = rawName.trim();
-    if (!name) continue;
-    if (existingNames.has(name.toLowerCase())) continue;
+
+    if (!name) {
+      skipped++;
+      continue;
+    }
+
+    if (existingNames.has(name.toLowerCase())) {
+      skipped++;
+      continue;
+    }
 
     await addLocal("speditions", {
       name,
@@ -691,7 +750,7 @@ async function importSpeditionsCSV(file) {
   }
 
   await renderMasterData();
-  setImportStatus(`${imported} Spedition(en) importiert.`);
+  setImportStatus(`${imported} Spedition(en) importiert, ${skipped} übersprungen.`);
   setSyncStatus("Speditionen-Import abgeschlossen.");
 }
 
@@ -702,16 +761,19 @@ async function importEntriesCSV(file) {
   const localSpeditions = await getAllLocal("speditions");
   const localErfasser = await getAllLocal("erfasser");
 
-  const speditionSet = new Set(localSpeditions.map((x) => x.name.toLowerCase()));
-  const erfasserSet = new Set(localErfasser.map((x) => x.name.toLowerCase()));
+  const speditionSet = new Set(localSpeditions.map(x => (x.name || "").toLowerCase()));
+  const erfasserSet = new Set(localErfasser.map(x => (x.name || "").toLowerCase()));
 
   let imported = 0;
   let skipped = 0;
 
   for (const row of rows) {
+    const spedition = (row.spedition || row.Spedition || "").trim();
+    const erfasser = (row.erfasser || row.Erfasser || "").trim();
+
     const entry = {
-      datum: (row.datum || row.Datum || "").trim(),
-      spedition: (row.spedition || row.Spedition || "").trim(),
+      datum: normalizeDate(row.datum || row.Datum || ""),
+      spedition,
       lieferschein: (
         row.lieferschein ||
         row.Lieferschein ||
@@ -721,9 +783,9 @@ async function importEntriesCSV(file) {
         row.Lieferscheinnr ||
         ""
       ).trim(),
-      erhalten: parseInt(row.erhalten || row.Erhalten || "0", 10) || 0,
-      abgegeben: parseInt(row.abgegeben || row.Abgegeben || "0", 10) || 0,
-      erfasser: (row.erfasser || row.Erfasser || "").trim(),
+      erhalten: parseInt((row.erhalten || row.Erhalten || "0").replace(",", "."), 10) || 0,
+      abgegeben: parseInt((row.abgegeben || row.Abgegeben || "0").replace(",", "."), 10) || 0,
+      erfasser,
       notizen: (row.notizen || row.Notizen || "").trim(),
       createdAt: Date.now()
     };
