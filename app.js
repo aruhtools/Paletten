@@ -11,10 +11,17 @@ import {
   doc,
   updateDoc
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import { firebaseConfig } from "./firebase-config.js";
 
 const firebaseApp = initializeApp(firebaseConfig);
 const cloudDb = getFirestore(firebaseApp);
+const auth = getAuth(firebaseApp);
 
 const cloudEntriesRef = collection(cloudDb, "entries");
 const cloudArchiveRef = collection(cloudDb, "archive");
@@ -47,10 +54,13 @@ dbReq.onupgradeneeded = (e) => {
 dbReq.onsuccess = async (e) => {
   localDb = e.target.result;
   setSyncStatus("Lokale Datenbank bereit.");
-  await initialCloudSync();
-  await renderMasterData();
-  await renderAll();
-  subscribeToCloud();
+  // Only start if already authenticated
+  if (auth.currentUser) {
+    await initialCloudSync();
+    await renderMasterData();
+    await renderAll();
+    subscribeToCloud();
+  }
 };
 
 dbReq.onerror = () => {
@@ -978,4 +988,58 @@ window.addEventListener("online", () => {
 
 window.addEventListener("offline", () => {
   setSyncStatus("Offline-Modus aktiv.");
+});
+
+// ---------- Auth ----------
+
+onAuthStateChanged(auth, async (user) => {
+  const loginOverlay = document.getElementById("loginOverlay");
+  const appContent = document.getElementById("appContent");
+
+  if (user) {
+    // User logged in → show app
+    loginOverlay.classList.add("hidden");
+    appContent.style.display = "block";
+
+    // If localDb is ready, start sync
+    if (localDb) {
+      await initialCloudSync();
+      await renderMasterData();
+      await renderAll();
+      subscribeToCloud();
+    }
+  } else {
+    // Not logged in → show login
+    loginOverlay.classList.remove("hidden");
+    appContent.style.display = "none";
+  }
+});
+
+// Login form
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const errorEl = document.getElementById("loginError");
+  const btn = document.getElementById("loginBtn");
+
+  errorEl.style.display = "none";
+  btn.disabled = true;
+  btn.textContent = "Anmeldung…";
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (err) {
+    console.error(err);
+    errorEl.textContent = "E-Mail oder Passwort falsch.";
+    errorEl.style.display = "block";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Anmelden";
+  }
+});
+
+// Logout
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await signOut(auth);
 });

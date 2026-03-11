@@ -19,9 +19,75 @@
       gap: 0.25rem;
       flex-wrap: wrap;
     }
+
+    /* Login Overlay */
+    #loginOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    #loginOverlay.hidden { display: none; }
+    .login-card {
+      background: #fff;
+      border-radius: 1rem;
+      padding: 2.5rem 2rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+      width: 100%;
+      max-width: 380px;
+    }
+    .login-card h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-weight: 700;
+      color: #333;
+    }
+    .login-card .form-control { border-radius: .5rem; }
+    .login-card .btn-login {
+      width: 100%;
+      border-radius: .5rem;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      padding: .6rem;
+      font-size: 1.05rem;
+      transition: opacity .2s;
+    }
+    .login-card .btn-login:hover { opacity: .9; }
+    #loginError {
+      display: none;
+      text-align: center;
+      margin-top: .75rem;
+    }
   </style>
 </head>
 <body>
+
+  <!-- Login Overlay -->
+  <div id="loginOverlay">
+    <div class="login-card">
+      <h2>🔒 Anmeldung</h2>
+      <form id="loginForm">
+        <div class="mb-3">
+          <label class="form-label">E-Mail</label>
+          <input type="email" id="loginEmail" class="form-control" placeholder="E-Mail-Adresse" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Passwort</label>
+          <input type="password" id="loginPassword" class="form-control" placeholder="Passwort" required>
+        </div>
+        <button type="submit" class="btn btn-login" id="loginBtn">Anmelden</button>
+        <div class="alert alert-danger mt-2" id="loginError">Fehler</div>
+      </form>
+    </div>
+  </div>
+
+  <!-- App Content (hidden until logged in) -->
+  <div id="appContent" style="display:none;">
   <nav class="navbar navbar-light bg-light mb-4">
     <div class="container-fluid">
       <span class="navbar-brand mb-0 h1">Palettenverwaltung PRO + Firebase</span>
@@ -31,6 +97,7 @@
         </button>
         <button class="btn btn-warning" id="exportCSV">CSV Export</button>
         <button class="btn btn-danger" id="clearBtn">Aktuelle Daten löschen</button>
+        <button class="btn btn-outline-dark" id="logoutBtn">Logout</button>
       </div>
     </div>
   </nav>
@@ -210,6 +277,8 @@
       </div>
     </div>
   </div>
+
+  </div><!-- /appContent -->
 
   <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
