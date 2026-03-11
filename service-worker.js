@@ -1,10 +1,11 @@
-const CACHE_NAME = "paletten-pro-firebase-v3";
+const CACHE_NAME = "paletten-pro-firebase-v4";
 const FILES = [
   "./",
   "./index.html",
   "./app.js",
   "./firebase-config.js",
-  "./manifest.json"
+  "./manifest.json",
+  "./palette-icon.jpg"
 ];
 
 self.addEventListener("install", (event) => {

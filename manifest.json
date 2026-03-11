@@ -7,7 +7,7 @@
   "theme_color": "#0d6efd",
   "icons": [
     {
-      "src": "./Palette Icon.jpg",
+      "src": "./palette-icon.jpg",
       "sizes": "512x512",
       "type": "image/jpeg"
     }
