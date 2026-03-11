@@ -627,8 +627,30 @@ async function updateChart() {
 
 // ---------- CSV Import ----------
 
+function sanitizeCSVText(text) {
+  const lines = text.split(/\r?\n/);
+  // Detect broken format: entire row wrapped in one outer quote with "" inside
+  // e.g. "ID,""Datum"",""Spedition"",..."
+  const firstLine = lines[0] || "";
+  if (/^"[^"]*,""/.test(firstLine)) {
+    return lines.map(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return "";
+      // Remove outer quotes and unescape inner double-quotes
+      let fixed = trimmed;
+      if (fixed.startsWith('"') && fixed.endsWith('"')) {
+        fixed = fixed.slice(1, -1);
+      }
+      fixed = fixed.replace(/""/g, '"');
+      return fixed;
+    }).join("\n");
+  }
+  return text;
+}
+
 function parseCSV(text) {
-  const cleaned = text.replace(/^\uFEFF/, "").trim();
+  const sanitized = sanitizeCSVText(text);
+  const cleaned = sanitized.replace(/^\uFEFF/, "").trim();
   if (!cleaned) return [];
 
   const lines = cleaned.split(/\r?\n/).filter(Boolean);
@@ -915,6 +937,31 @@ document.getElementById("clearBtn").addEventListener("click", async () => {
   const ok = confirm("Aktuelle Daten löschen? Sie bleiben im Archiv und in der Timeline erhalten.");
   if (!ok) return;
   await clearCurrentEntriesOnly();
+});
+
+document.getElementById("clearArchiveBtn").addEventListener("click", async () => {
+  const ok = confirm("Archiv dauerhaft löschen? Dieser Vorgang kann nicht rückgängig gemacht werden!");
+  if (!ok) return;
+
+  // Delete locally
+  await clearLocal("archive");
+  await renderAll();
+
+  // Delete from cloud
+  if (navigator.onLine) {
+    try {
+      const snap = await getDocs(cloudArchiveRef);
+      for (const d of snap.docs) {
+        await deleteDoc(doc(cloudDb, "archive", d.id));
+      }
+      setSyncStatus("Archiv dauerhaft gelöscht.");
+    } catch (err) {
+      console.error(err);
+      setSyncStatus("Archiv lokal gelöscht, Cloud-Löschung fehlgeschlagen.");
+    }
+  } else {
+    setSyncStatus("Archiv lokal gelöscht (offline).");
+  }
 });
 
 document.getElementById("exportCSV").addEventListener("click", async () => {
