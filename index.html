@@ -110,9 +110,6 @@
           <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#settingsModal">
             Einstellungen
           </button>
-          <button class="btn btn-warning" id="exportCSV">CSV Export</button>
-          <button class="btn btn-danger" id="clearBtn">Aktuelle Daten löschen</button>
-          <button class="btn btn-outline-danger" id="clearArchiveBtn">Archiv löschen</button>
           <button class="btn btn-outline-dark" id="logoutBtn">Logout</button>
         </div>
       </div>
@@ -237,45 +234,96 @@
           </div>
 
           <div class="modal-body">
-            <h6>Speditionen</h6>
-            <form id="speditionForm" class="mb-3">
-              <div class="input-group">
-                <input type="text" class="form-control" id="newSpedition" placeholder="Neue Spedition" required>
-                <button type="submit" class="btn btn-primary">Hinzufügen</button>
+            <!-- Tabs -->
+            <ul class="nav nav-tabs mb-3" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabStammdaten" type="button"
+                  role="tab">Stammdaten</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabImport" type="button" role="tab">CSV
+                  Import</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabExport" type="button" role="tab">CSV
+                  Export</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabLoeschen" type="button"
+                  role="tab">Löschoptionen</button>
+              </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+
+              <!-- Tab: Stammdaten -->
+              <div class="tab-pane fade show active" id="tabStammdaten" role="tabpanel">
+                <h6>Speditionen</h6>
+                <form id="speditionForm" class="mb-3">
+                  <div class="input-group">
+                    <input type="text" class="form-control" id="newSpedition" placeholder="Neue Spedition" required>
+                    <button type="submit" class="btn btn-primary">Hinzufügen</button>
+                  </div>
+                </form>
+                <ul class="list-group mb-4" id="speditionsList"></ul>
+
+                <h6>Erfasser</h6>
+                <form id="erfasserForm" class="mb-3">
+                  <div class="input-group">
+                    <input type="text" class="form-control" id="newErfasser" placeholder="Neuer Erfasser" required>
+                    <button type="submit" class="btn btn-primary">Hinzufügen</button>
+                  </div>
+                </form>
+                <ul class="list-group mb-4" id="erfasserList"></ul>
               </div>
-            </form>
-            <ul class="list-group mb-4" id="speditionsList"></ul>
 
-            <h6>Erfasser</h6>
-            <form id="erfasserForm" class="mb-3">
-              <div class="input-group">
-                <input type="text" class="form-control" id="newErfasser" placeholder="Neuer Erfasser" required>
-                <button type="submit" class="btn btn-primary">Hinzufügen</button>
+              <!-- Tab: CSV Import -->
+              <div class="tab-pane fade" id="tabImport" role="tabpanel">
+                <div class="mb-3">
+                  <label class="form-label">Speditionen CSV</label>
+                  <input type="file" class="form-control" id="importSpeditionsFile" accept=".csv">
+                  <button type="button" class="btn btn-outline-primary mt-2" id="importSpeditionsBtn">
+                    Speditionen importieren
+                  </button>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Palettenerfassung CSV</label>
+                  <input type="file" class="form-control" id="importEntriesFile" accept=".csv">
+                  <button type="button" class="btn btn-outline-primary mt-2" id="importEntriesBtn">
+                    Palettendaten importieren
+                  </button>
+                </div>
+
+                <div class="alert alert-light border" id="importStatus">
+                  Noch kein Import ausgeführt.
+                </div>
               </div>
-            </form>
-            <ul class="list-group mb-4" id="erfasserList"></ul>
 
-            <hr>
-            <h6>CSV Import</h6>
+              <!-- Tab: CSV Export -->
+              <div class="tab-pane fade" id="tabExport" role="tabpanel">
+                <p>Exportiert alle aktuellen Paletteneinträge als CSV-Datei.</p>
+                <button class="btn btn-warning" id="exportCSV">CSV Export starten</button>
+              </div>
 
-            <div class="mb-3">
-              <label class="form-label">Speditionen CSV</label>
-              <input type="file" class="form-control" id="importSpeditionsFile" accept=".csv">
-              <button type="button" class="btn btn-outline-primary mt-2" id="importSpeditionsBtn">
-                Speditionen importieren
-              </button>
-            </div>
+              <!-- Tab: Löschoptionen -->
+              <div class="tab-pane fade" id="tabLoeschen" role="tabpanel">
+                <div class="mb-3">
+                  <h6>Aktuelle Daten löschen</h6>
+                  <p class="text-muted">Verschiebt alle aktuellen Einträge ins Archiv. Die Daten bleiben in der Timeline
+                    erhalten.</p>
+                  <button class="btn btn-danger" id="clearBtn">Aktuelle Daten löschen</button>
+                </div>
+                <hr>
+                <div class="mb-3">
+                  <h6>Archiv dauerhaft löschen</h6>
+                  <p class="text-muted">Löscht alle archivierten Einträge unwiderruflich. Dieser Vorgang kann nicht
+                    rückgängig gemacht werden!</p>
+                  <button class="btn btn-outline-danger" id="clearArchiveBtn">Archiv löschen</button>
+                </div>
+              </div>
 
-            <div class="mb-3">
-              <label class="form-label">Palettenerfassung CSV</label>
-              <input type="file" class="form-control" id="importEntriesFile" accept=".csv">
-              <button type="button" class="btn btn-outline-primary mt-2" id="importEntriesBtn">
-                Palettendaten importieren
-              </button>
-            </div>
-
-            <div class="alert alert-light border" id="importStatus">
-              Noch kein Import ausgeführt.
             </div>
           </div>
         </div>
