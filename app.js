@@ -904,11 +904,6 @@ document.getElementById("entryForm").addEventListener("submit", async (e) => {
     notizen: document.getElementById("notizen").value.trim()
   };
 
-  if (!entry.lieferschein) {
-    alert("Bitte Lieferscheinnummer eingeben.");
-    return;
-  }
-
   if (editingId !== null) {
     await updateEntry(editingId, entry);
   } else {
