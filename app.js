@@ -556,7 +556,7 @@ async function updateStand() {
 
   entries.forEach((e) => {
     if (!stand[e.spedition]) stand[e.spedition] = 0;
-    stand[e.spedition] += Number(e.erhalten) - Number(e.abgegeben);
+    stand[e.spedition] += Number(e.abgegeben) - Number(e.erhalten);
   });
 
   const tbody = document.querySelector("#standTable tbody");
@@ -564,7 +564,9 @@ async function updateStand() {
 
   Object.keys(stand).sort().forEach((spedition) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${spedition}</td><td>${stand[spedition]}</td>`;
+    const val = stand[spedition];
+    const colorClass = val < 0 ? "text-danger" : (val > 0 ? "text-success" : "");
+    tr.innerHTML = `<td>${spedition}</td><td class="${colorClass} fw-bold">${val}</td>`;
     tbody.appendChild(tr);
   });
 }
@@ -581,7 +583,7 @@ async function calculateTimeline() {
   all.forEach((e) => {
     if (e.datum <= date) {
       if (!result[e.spedition]) result[e.spedition] = 0;
-      result[e.spedition] += Number(e.erhalten) - Number(e.abgegeben);
+      result[e.spedition] += Number(e.abgegeben) - Number(e.erhalten);
     }
   });
 
@@ -590,7 +592,9 @@ async function calculateTimeline() {
 
   Object.keys(result).sort().forEach((spedition) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${spedition}</td><td>${result[spedition]}</td>`;
+    const val = result[spedition];
+    const colorClass = val < 0 ? "text-danger" : (val > 0 ? "text-success" : "");
+    tr.innerHTML = `<td>${spedition}</td><td class="${colorClass} fw-bold">${val}</td>`;
     tbody.appendChild(tr);
   });
 }
@@ -604,7 +608,7 @@ async function updateChart() {
   const values = [];
 
   data.forEach((e) => {
-    sum += Number(e.erhalten) - Number(e.abgegeben);
+    sum += Number(e.abgegeben) - Number(e.erhalten);
     labels.push(e.datum);
     values.push(sum);
   });
